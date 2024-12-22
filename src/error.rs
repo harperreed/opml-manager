@@ -22,6 +22,9 @@ pub enum OPMLError {
 
     #[error("URL parsing error: {0}")]
     UrlParsing(#[from] url::ParseError),
+
+    #[error("Category nesting too deep: maximum depth is {0} levels")]
+    CategoryNestingTooDeep(usize),
 }
 
 pub type Result<T> = std::result::Result<T, OPMLError>;

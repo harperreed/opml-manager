@@ -16,7 +16,16 @@ pub fn parse_opml(content: &str) -> Result<Vec<Feed>> {
     let mut feeds = Vec::new();
 
     // Recursively process outline nodes
-    fn process_outline(node: Node, current_categories: &[String], feeds: &mut Vec<Feed>) {
+    const MAX_CATEGORY_DEPTH: usize = 100;
+
+    fn process_outline(
+        node: Node,
+        current_categories: &[String],
+        feeds: &mut Vec<Feed>,
+    ) -> Result<()> {
+        if current_categories.len() >= MAX_CATEGORY_DEPTH {
+            return Err(crate::error::OPMLError::CategoryNestingTooDeep(MAX_CATEGORY_DEPTH));
+        }
         for child in node.children() {
             if child.has_tag_name("outline") {
                 let mut categories = current_categories.to_vec();
@@ -29,7 +38,7 @@ pub fn parse_opml(content: &str) -> Result<Vec<Feed>> {
                     // Category node (no type or xmlUrl, but has text/title)
                     (None, None, Some(title)) => {
                         categories.push(title.to_string());
-                        process_outline(child, &categories, feeds);
+                        process_outline(child, &categories, feeds)?;
                     }
                     // Feed node (has xmlUrl or type="rss")
                     (type_attr, Some(xml_url), Some(title))
@@ -56,7 +65,7 @@ pub fn parse_opml(content: &str) -> Result<Vec<Feed>> {
         .find(|n| n.has_tag_name("body"))
         .ok_or(crate::error::OPMLError::NoBodyTag)?;
 
-    process_outline(body, &[], &mut feeds);
+    process_outline(body, &[], &mut feeds)?;
     Ok(feeds)
 }
 
