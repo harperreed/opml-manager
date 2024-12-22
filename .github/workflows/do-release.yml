@@ -1,6 +1,5 @@
 name: Create Release
 on:
-    workflow_run:
     push:
         branches:
             - "main"
@@ -9,6 +8,7 @@ on:
             - "**.md"
             - ".gitignore"
             - ".mise.toml"
+    workflow_dispatch:
 
 env:
     BINARY_NAME: "opml-manager" # Set your binary name here
