@@ -8,6 +8,9 @@ pub enum OPMLError {
     #[error("XML parsing error: {0}")]
     XMLParsing(#[from] roxmltree::Error),
 
+    #[error("XML parser error: {0}")]
+    XMLParser(String),
+
     #[error("HTTP error: {0}")]
     Http(#[from] reqwest::Error),
 

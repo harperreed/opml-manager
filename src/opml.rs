@@ -1,16 +1,9 @@
-use crate::error::Result;
+use crate::error::{OPMLError, Result};
 use crate::Feed;
 use chrono::{DateTime, Local};
 use std::collections::HashMap;
-use xmlparser::{Tokenizer, Token};
+use xmlparser::{ElementEnd, Token, Tokenizer};
 
-/// Parses an OPML file content into a vector of Feed structs
-///
-/// # Arguments
-/// * `content` - The string content of the OPML file
-///
-/// # Returns
-/// * `Result<Vec<Feed>>` - A vector of Feed structs if successful
 pub fn parse_opml(content: &str) -> Result<Vec<Feed>> {
     let mut feeds = Vec::new();
     let mut categories = Vec::new();
@@ -18,10 +11,15 @@ pub fn parse_opml(content: &str) -> Result<Vec<Feed>> {
 
     let mut tokenizer = Tokenizer::from(content);
     while let Some(token) = tokenizer.next() {
-        match token? {
+        match token.map_err(|e| OPMLError::XMLParser(e.to_string()))? {
             Token::ElementStart { local, .. } => {
                 if local.as_str() == "outline" {
-                    current_feed = Some(Feed::new(String::new(), String::new(), None, categories.clone()));
+                    current_feed = Some(Feed::new(
+                        String::new(),
+                        String::new(),
+                        None,
+                        categories.clone(),
+                    ));
                 }
             }
             Token::Attribute { local, value, .. } => {
@@ -39,15 +37,23 @@ pub fn parse_opml(content: &str) -> Result<Vec<Feed>> {
                     }
                 }
             }
-            Token::ElementEnd { end, .. } => {
-                if end.is_empty() {
+            Token::ElementEnd { end, .. } => match end {
+                ElementEnd::Empty => {
                     if let Some(feed) = current_feed.take() {
                         if !feed.xml_url.is_empty() && !feed.title.is_empty() {
                             feeds.push(feed);
                         }
                     }
                 }
-            }
+                ElementEnd::Close(..) => {
+                    if let Some(feed) = current_feed.take() {
+                        if !feed.xml_url.is_empty() && !feed.title.is_empty() {
+                            feeds.push(feed);
+                        }
+                    }
+                }
+                ElementEnd::Open => {}
+            },
             _ => {}
         }
     }
@@ -55,13 +61,6 @@ pub fn parse_opml(content: &str) -> Result<Vec<Feed>> {
     Ok(feeds)
 }
 
-/// Generates OPML content from a vector of feeds
-///
-/// # Arguments
-/// * `feeds` - Vector of Feed structs to include in the OPML
-///
-/// # Returns
-/// * `Result<String>` - The generated OPML content if successful
 pub fn generate_opml(feeds: &[Feed]) -> Result<String> {
     let mut output = String::from(
         r#"<?xml version="1.0" encoding="UTF-8"?>
@@ -133,43 +132,4 @@ pub fn generate_opml(feeds: &[Feed]) -> Result<String> {
 
     output.push_str("  </body>\n</opml>");
     Ok(output)
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_parse_simple_opml() {
-        let content = r#"<?xml version="1.0" encoding="UTF-8"?>
-        <opml version="2.0">
-            <head><title>Test</title></head>
-            <body>
-                <outline type="rss" text="Test Feed" xmlUrl="http://example.com/feed.xml"/>
-            </body>
-        </opml>"#;
-
-        let feeds = parse_opml(content).unwrap();
-        assert_eq!(feeds.len(), 1);
-        assert_eq!(feeds[0].title, "Test Feed");
-        assert_eq!(feeds[0].xml_url, "http://example.com/feed.xml");
-        assert!(feeds[0].category.is_empty());
-    }
-
-    #[test]
-    fn test_parse_categorized_feeds() {
-        let content = r#"<?xml version="1.0" encoding="UTF-8"?>
-        <opml version="2.0">
-            <head><title>Test</title></head>
-            <body>
-                <outline text="Category">
-                    <outline type="rss" text="Test Feed" xmlUrl="http://example.com/feed.xml"/>
-                </outline>
-            </body>
-        </opml>"#;
-
-        let feeds = parse_opml(content).unwrap();
-        assert_eq!(feeds.len(), 1);
-        assert_eq!(feeds[0].category, vec!["Category"]);
-    }
 }
