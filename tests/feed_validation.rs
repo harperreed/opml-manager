@@ -1,5 +1,6 @@
 use opml_manager::validation::validate_feed;
 mod common;
+use std::time::Duration;
 
 #[test]
 fn test_validate_valid_feed() {
@@ -72,14 +73,14 @@ fn test_valid_xml_invalid_feed() {
 fn test_redirect() {
     let rt = common::get_test_runtime();
     let mut server = mockito::Server::new();
-    
+
     // Set up redirect
     let mock_redirect = server
         .mock("GET", "/old-feed.xml")
         .with_status(301)
         .with_header("Location", "/new-feed.xml")
         .create();
-    
+
     // Set up final destination
     let mock_final = server
         .mock("GET", "/new-feed.xml")
