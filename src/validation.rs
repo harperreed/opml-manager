@@ -47,7 +47,7 @@ pub async fn validate_feed(feed: &Feed, client: &Client) -> Result<ValidationRes
             let text = response.text().await
                 .map_err(|e| OPMLError::ResponseParsingError(e.to_string()))?;
 
-            match roxmltree::Document::parse(&text) {
+            let validation_result = match roxmltree::Document::parse(&text) {
                 Ok(doc) => {
                     let root = doc.root_element();
                     let is_rss = root.children()
@@ -56,21 +56,23 @@ pub async fn validate_feed(feed: &Feed, client: &Client) -> Result<ValidationRes
                     let is_atom = root.has_tag_name("feed");
                     
                     if is_rss || is_atom {
-                        Ok(ValidationResult {
+                        ValidationResult {
                             feed: feed.title.clone(),
                             url: feed.xml_url.clone(),
                             status: "valid".to_string(),
                             error: String::new(),
                             categories: feed.category.clone(),
-                        })
+                        }
                     } else {
-                        Err(OPMLError::FeedParsingError(
+                        return Err(OPMLError::FeedParsingError(
                             "Document is not a valid RSS or Atom feed".to_string()
-                        ))
+                        ));
                     }
                 },
-                Err(e) => Err(OPMLError::XMLParsing(e)),
-            }?
+                Err(e) => return Err(OPMLError::XMLParsing(e)),
+            };
+
+            return Ok(validation_result);
         } else if response.status().is_server_error() && attempts < max_attempts {
             let elapsed = start.elapsed();
             if elapsed < backoff {
@@ -79,8 +81,9 @@ pub async fn validate_feed(feed: &Feed, client: &Client) -> Result<ValidationRes
             backoff *= 2;
             continue;
         } else {
+            let status = response.status();
             return Err(OPMLError::Http(
-                reqwest::Error::from(reqwest::StatusError::new(response))
+                format!("HTTP error: {}", status).into()
             ));
         }
 
