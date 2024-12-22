@@ -1,11 +1,11 @@
 use clap::Parser;
 use futures::future::join_all;
+use indicatif::{ProgressBar, ProgressStyle};
 use reqwest::Client;
 use std::error::Error;
 use std::fs;
 use std::path::Path;
 use std::time::Duration;
-use indicatif::{ProgressBar, ProgressStyle};
 
 use opml_manager::cli::{Cli, Commands};
 use opml_manager::opml::{generate_opml, parse_opml};
@@ -83,6 +83,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
             let pb = ProgressBar::new(feeds.len() as u64);
             pb.set_style(ProgressStyle::default_bar()
                 .template("{spinner:.green} [{elapsed_precise}] [{bar:40.cyan/blue}] {pos}/{len} ({eta})")
+                .expect("Failed to create progress bar template")
                 .progress_chars("#>-"));
 
             for feed in &feeds {
@@ -194,6 +195,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
                 let pb = ProgressBar::new(feeds.len() as u64);
                 pb.set_style(ProgressStyle::default_bar()
                     .template("{spinner:.green} [{elapsed_precise}] [{bar:40.cyan/blue}] {pos}/{len} ({eta})")
+                    .expect("Failed to create progress bar template")
                     .progress_chars("#>-"));
 
                 for feed in &feeds {
