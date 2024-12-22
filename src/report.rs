@@ -103,8 +103,8 @@ pub fn format_markdown_report(
     } else {
         report.push_str("## Duplicate Feeds Found\n\n");
         for feed in duplicates {
-            report.push_str(&format!("### {}\n\n", feed.title.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")));
-            report.push_str(&format!("- URL: {}\n", feed.xml_url));
+            report.push_str(&format!("### {}\n\n", escape_special_chars(&feed.title)));
+            report.push_str(&format!("- URL: {}\n", escape_special_chars(&feed.xml_url)));
             if !feed.category.is_empty() {
                 report.push_str(&format!("- Categories: {}\n", feed.category.join(" > ")));
             }
