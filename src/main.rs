@@ -14,6 +14,7 @@ use opml_manager::tui::{TuiApp, handle_events, draw_ui};
 use crossterm::terminal::{enable_raw_mode, disable_raw_mode};
 use ratatui::backend::CrosstermBackend;
 use ratatui::Terminal;
+use crossterm::event::{Event, KeyCode};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
@@ -217,6 +218,8 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
             let mut app = TuiApp::new();
             app.load_feeds(parse_opml(&fs::read_to_string("feeds.opml")?)?);
+
+            let events = Events::new(Duration::from_millis(200));
 
             loop {
                 terminal.draw(|f| draw_ui(f, &app))?;
