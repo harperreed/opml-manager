@@ -93,13 +93,6 @@ pub fn parse_opml(content: &str) -> Result<Vec<Feed>> {
     Ok(feeds)
 }
 
-/// Generates OPML content from a vector of feeds
-///
-/// # Arguments
-/// * `feeds` - Vector of Feed structs to include in the OPML
-///
-/// # Returns
-/// * `Result<String>` - The generated OPML content if successful
 pub fn generate_opml(feeds: &[Feed]) -> Result<String> {
     let mut output = String::from(
         r#"<?xml version="1.0" encoding="UTF-8"?>
