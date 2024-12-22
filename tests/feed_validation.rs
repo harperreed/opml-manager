@@ -8,6 +8,7 @@ fn test_validate_valid_feed() {
     let mock = server
         .mock("GET", "/feed.xml")
         .with_status(200)
+        .with_header("content-type", "application/rss+xml")
         .with_body(r#"<?xml version="1.0"?><rss version="2.0"><channel><title>Test</title></channel></rss>"#)
         .create();
 
