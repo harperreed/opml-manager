@@ -135,90 +135,103 @@ mod opml_generation {
 
 mod feed_validation {
     use super::*;
+    use mockito::Server;
+    use std::sync::Once;
 
-    // Create a runtime for all async tests
-    fn runtime() -> tokio::runtime::Runtime {
-        tokio::runtime::Builder::new_current_thread()
-            .enable_all()
-            .build()
-            .unwrap()
+    // Initialize the runtime once
+    static INIT: Once = Once::new();
+    static mut RUNTIME: Option<tokio::runtime::Runtime> = None;
+
+    // Helper function to get/create runtime
+    fn get_runtime() -> &'static tokio::runtime::Runtime {
+        unsafe {
+            INIT.call_once(|| {
+                RUNTIME = Some(
+                    tokio::runtime::Builder::new_current_thread()
+                        .enable_all()
+                        .build()
+                        .unwrap(),
+                );
+            });
+            RUNTIME.as_ref().unwrap()
+        }
     }
 
     #[test]
     fn test_validate_valid_feed() {
-        let rt = runtime();
-        rt.block_on(async {
-            let mut server = mockito::Server::new();
-            let mock = server.mock("GET", "/feed.xml")
-                .with_status(200)
-                .with_body(r#"<?xml version="1.0"?><rss version="2.0"><channel><title>Test</title></channel></rss>"#)
-                .create();
+        let mut server = Server::new();
+        let mock = server
+            .mock("GET", "/feed.xml")
+            .with_status(200)
+            .with_body(r#"<?xml version="1.0"?><rss version="2.0"><channel><title>Test</title></channel></rss>"#)
+            .create();
 
-            let feed = Feed::new(
-                "Test Feed".to_string(),
-                format!("{}/feed.xml", server.url()),
-                None,
-                vec![],
-            );
+        let feed = Feed::new(
+            "Test Feed".to_string(),
+            format!("{}/feed.xml", server.url()),
+            None,
+            vec![],
+        );
 
-            let client = reqwest::Client::new();
-            let result = validate_feed(&feed, &client).await.unwrap();
-            
-            assert_eq!(result.status, "valid");
-            assert!(result.error.is_empty());
-            mock.assert();
-        });
+        let client = reqwest::Client::new();
+        let result = get_runtime().block_on(async {
+            validate_feed(&feed, &client).await
+        }).unwrap();
+        
+        assert_eq!(result.status, "valid");
+        assert!(result.error.is_empty());
+        mock.assert();
     }
 
     #[test]
     fn test_validate_invalid_feed() {
-        let rt = runtime();
-        rt.block_on(async {
-            let mut server = mockito::Server::new();
-            let mock = server.mock("GET", "/feed.xml")
-                .with_status(200)
-                .with_body("Not XML content")
-                .create();
+        let mut server = Server::new();
+        let mock = server
+            .mock("GET", "/feed.xml")
+            .with_status(200)
+            .with_body("Not XML content")
+            .create();
 
-            let feed = Feed::new(
-                "Test Feed".to_string(),
-                format!("{}/feed.xml", server.url()),
-                None,
-                vec![],
-            );
+        let feed = Feed::new(
+            "Test Feed".to_string(),
+            format!("{}/feed.xml", server.url()),
+            None,
+            vec![],
+        );
 
-            let client = reqwest::Client::new();
-            let result = validate_feed(&feed, &client).await.unwrap();
-            
-            assert_eq!(result.status, "invalid");
-            assert!(!result.error.is_empty());
-            mock.assert();
-        });
+        let client = reqwest::Client::new();
+        let result = get_runtime().block_on(async {
+            validate_feed(&feed, &client).await
+        }).unwrap();
+        
+        assert_eq!(result.status, "invalid");
+        assert!(!result.error.is_empty());
+        mock.assert();
     }
 
     #[test]
     fn test_validate_unreachable_feed() {
-        let rt = runtime();
-        rt.block_on(async {
-            let mut server = mockito::Server::new();
-            let mock = server.mock("GET", "/feed.xml")
-                .with_status(404)
-                .create();
+        let mut server = Server::new();
+        let mock = server
+            .mock("GET", "/feed.xml")
+            .with_status(404)
+            .create();
 
-            let feed = Feed::new(
-                "Test Feed".to_string(),
-                format!("{}/feed.xml", server.url()),
-                None,
-                vec![],
-            );
+        let feed = Feed::new(
+            "Test Feed".to_string(),
+            format!("{}/feed.xml", server.url()),
+            None,
+            vec![],
+        );
 
-            let client = reqwest::Client::new();
-            let result = validate_feed(&feed, &client).await.unwrap();
-            
-            assert_eq!(result.status, "error");
-            assert!(result.error.contains("404"));
-            mock.assert();
-        });
+        let client = reqwest::Client::new();
+        let result = get_runtime().block_on(async {
+            validate_feed(&feed, &client).await
+        }).unwrap();
+        
+        assert_eq!(result.status, "error");
+        assert!(result.error.contains("404"));
+        mock.assert();
     }
 }
 
