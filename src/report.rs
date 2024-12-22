@@ -106,7 +106,7 @@ pub fn format_markdown_report(
             report.push_str(&format!("### {}\n\n", escape_special_chars(&feed.title)));
             report.push_str(&format!("- URL: {}\n", escape_special_chars(&feed.xml_url)));
             if !feed.category.is_empty() {
-                report.push_str(&format!("- Categories: {}\n", feed.category.join(" > ")));
+                report.push_str(&format!("- Categories: {}\n", feed.category.iter().map(|c| escape_special_chars(c)).collect::<Vec<_>>().join(" > ")));
             }
             report.push_str("\n");
         }
