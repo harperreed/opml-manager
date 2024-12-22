@@ -1,70 +1,118 @@
-name: CI
-
+name: Create Release
 on:
-  push:
-    branches:
-      - main
-  pull_request:
-    branches:
-      - main
+    workflow_run:
+    push:
+        branches:
+            - "main"
+        paths-ignore:
+            - ".github/**"
+            - "**.md"
+            - ".gitignore"
+            - ".mise.toml"
+
+env:
+    BINARY_NAME: "opml-manager" # Set your binary name here
 
 jobs:
-  test:
-    runs-on: ubuntu-latest
+    create_release:
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v3
+              with:
+                  fetch-depth: 0
 
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v2
+            - name: Install Rust toolchain
+              uses: dtolnay/rust-toolchain@stable
+              with:
+                  targets: x86_64-pc-windows-gnu, x86_64-unknown-linux-gnu, aarch64-apple-darwin
 
-      - name: Set up Rust
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          profile: minimal
-          override: true
+            - name: Install dependencies for cross-compilation
+              run: |
+                  sudo apt-get update
+                  sudo apt-get install -y mingw-w64
 
-      - name: Install dependencies
-        run: cargo build --release
+            - name: Get latest tag
+              id: get_latest_tag
+              run: |
+                  git fetch --tags
+                  latest_tag=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
+                  echo "LATEST_TAG=$latest_tag" >> $GITHUB_OUTPUT
 
-      - name: Run tests
-        run: cargo test
+            - name: Bump version and push tag
+              id: bump_version
+              run: |
+                  latest_tag=${{ steps.get_latest_tag.outputs.LATEST_TAG }}
+                  new_tag=$(echo $latest_tag | awk -F. '{$NF = $NF + 1;} 1' | sed 's/ /./g')
+                  git config --local user.email "action@github.com"
+                  git config --local user.name "GitHub Action"
+                  git tag -a $new_tag -m "Release $new_tag"
+                  git push origin $new_tag
+                  echo "NEW_TAG=$new_tag" >> $GITHUB_OUTPUT
 
-  release:
-    runs-on: ubuntu-latest
-    needs: test
+            - name: Generate Changelog
+              id: generate_changelog
+              run: |
+                  changelog=$(git log ${{ steps.get_latest_tag.outputs.LATEST_TAG }}..HEAD --pretty=format:"- %s" --reverse)
+                  echo "CHANGELOG<<EOF" >> $GITHUB_OUTPUT
+                  echo "$changelog" >> $GITHUB_OUTPUT
+                  echo "EOF" >> $GITHUB_OUTPUT
 
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+            - name: Build for Windows
+              run: cargo build --release --target x86_64-pc-windows-gnu
 
-      - name: Set up Rust
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          toolchain: stable
-          profile: minimal
-          override: true
+            - name: Build for Linux
+              run: cargo build --release --target x86_64-unknown-linux-gnu
 
-      - name: Build release binary
-        run: cargo build --release
+            - name: Build for macOS ARM64
+              run: cargo build --release --target aarch64-apple-darwin
 
-      - name: Create GitHub Release
-        id: create_release
-        uses: softprops/action-gh-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          name: ${{ github.ref_name }}
-          body: |
-            Release ${{ github.ref_name }}
-            
-            Changes in this release:
-            ${{ github.event.head_commit.message }}
-          draft: false
-          prerelease: false
-      - name: Set executable permissions
-        run: chmod +x opml-manager
+            - name: Prepare release assets
+              run: |
+                  cp target/x86_64-pc-windows-gnu/release/${{ env.BINARY_NAME }}.exe ./${{ env.BINARY_NAME }}-windows-amd64.exe
+                  cp target/x86_64-unknown-linux-gnu/release/${{ env.BINARY_NAME }} ./${{ env.BINARY_NAME }}-linux-amd64
+                  cp target/aarch64-apple-darwin/release/${{ env.BINARY_NAME }} ./${{ env.BINARY_NAME }}-darwin-arm64
 
-      - name: Upload Release Asset
-        uses: softprops/action-gh-release@v1
-        with:
-          files: opml-manager
+            - name: Create Release
+              id: create_release
+              uses: actions/create-release@v1
+              env:
+                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+              with:
+                  tag_name: ${{ steps.bump_version.outputs.NEW_TAG }}
+                  release_name: Release ${{ steps.bump_version.outputs.NEW_TAG }}
+                  body: |
+                      Changes in this Release:
+                      ${{ steps.generate_changelog.outputs.CHANGELOG }}
+                  draft: false
+                  prerelease: false
+
+            - name: Upload Windows Release Asset
+              uses: actions/upload-release-asset@v1
+              env:
+                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+              with:
+                  upload_url: ${{ steps.create_release.outputs.upload_url }}
+                  asset_path: ./${{ env.BINARY_NAME }}-windows-amd64.exe
+                  asset_name: ${{ env.BINARY_NAME }}-windows-amd64.exe
+                  asset_content_type: application/octet-stream
+
+            - name: Upload Linux Release Asset
+              uses: actions/upload-release-asset@v1
+              env:
+                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+              with:
+                  upload_url: ${{ steps.create_release.outputs.upload_url }}
+                  asset_path: ./${{ env.BINARY_NAME }}-linux-amd64
+                  asset_name: ${{ env.BINARY_NAME }}-linux-amd64
+                  asset_content_type: application/octet-stream
+
+            - name: Upload macOS ARM64 Release Asset
+              uses: actions/upload-release-asset@v1
+              env:
+                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+              with:
+                  upload_url: ${{ steps.create_release.outputs.upload_url }}
+                  asset_path: ./${{ env.BINARY_NAME }}-darwin-arm64
+                  asset_name: ${{ env.BINARY_NAME }}-darwin-arm64
+                  asset_content_type: application/octet-stream
