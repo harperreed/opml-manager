@@ -72,14 +72,14 @@ fn test_valid_xml_invalid_feed() {
 fn test_redirect() {
     let rt = common::get_test_runtime();
     let mut server = mockito::Server::new();
-
+    
     // Set up redirect
     let mock_redirect = server
         .mock("GET", "/old-feed.xml")
         .with_status(301)
         .with_header("Location", "/new-feed.xml")
         .create();
-
+    
     // Set up final destination
     let mock_final = server
         .mock("GET", "/new-feed.xml")
@@ -173,10 +173,8 @@ fn test_network_timeout() {
     let mock = server
         .mock("GET", "/feed.xml")
         .with_status(200)
-        .with_body_from_fn(move |_| {
-            std::thread::sleep(std::time::Duration::from_secs(2));
-            Ok(r#"<?xml version="1.0"?><rss version="2.0"><channel><title>Test</title></channel></rss>"#.into())
-        })
+        .with_body(r#"<?xml version="1.0"?><rss version="2.0"><channel><title>Test</title></channel></rss>"#)
+        .with_delay(std::time::Duration::from_secs(2))
         .create();
 
     let feed = common::create_test_feed("Timeout Feed", &format!("{}/feed.xml", server.url()));
