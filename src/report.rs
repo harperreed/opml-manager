@@ -58,23 +58,24 @@ pub fn format_markdown_report(
         report.push_str("No categories found\n\n");
     } else {
         report.push_str("## Categories\n\n");
-    let mut category_counter: HashMap<String, usize> = HashMap::new();
-    for feed in feeds {
-        for category in &feed.category {
-            *category_counter.entry(category.clone()).or_insert(0) += 1;
+        let mut category_counter: HashMap<String, usize> = HashMap::new();
+        for feed in feeds {
+            for category in &feed.category {
+                *category_counter.entry(category.clone()).or_insert(0) += 1;
+            }
         }
+
+        report.push_str("| Category | Feed Count |\n");
+        report.push_str("|----------|------------|\n");
+
+        let mut sorted_categories: Vec<_> = category_counter.iter().collect();
+        sorted_categories.sort_by(|a, b| b.1.cmp(a.1));
+
+        for (category, count) in sorted_categories {
+            report.push_str(&format!("| {} | {} |\n", category, count));
+        }
+        report.push_str("\n");
     }
-
-    report.push_str("| Category | Feed Count |\n");
-    report.push_str("|----------|------------|\n");
-
-    let mut sorted_categories: Vec<_> = category_counter.iter().collect();
-    sorted_categories.sort_by(|a, b| b.1.cmp(a.1));
-
-    for (category, count) in sorted_categories {
-        report.push_str(&format!("| {} | {} |\n", category, count));
-    }
-    report.push_str("\n");
 
     // Top domains
     report.push_str("## Top Domains\n\n");
