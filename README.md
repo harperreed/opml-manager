@@ -56,6 +56,9 @@ For more options, use:
 cargo run --release -- --help
 ```
 
+### Progress Bar for Feed Validation
+The OPML Manager now includes a progress bar for feed validation to provide users with real-time updates on the validation process. This feature is especially useful for long-running operations.
+
 ## ⚙️ Tech Info
 The OPML Manager is built using Rust and leverages several libraries:
 - **Clap**: For parsing command-line arguments.
