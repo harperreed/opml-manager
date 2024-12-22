@@ -1,5 +1,6 @@
 use clap::Parser;
 use futures::future::join_all;
+use indicatif::{ProgressBar, ProgressStyle};
 use reqwest::Client;
 use std::error::Error;
 use std::fs;
@@ -90,15 +91,26 @@ async fn main() -> Result<(), Box<dyn Error>> {
                 .build()?;
 
             let mut tasks = Vec::new();
+            let pb = ProgressBar::new(feeds.len() as u64);
+            pb.set_style(ProgressStyle::default_bar()
+                .template("{spinner:.green} [{elapsed_precise}] [{bar:40.cyan/blue}] {pos}/{len} ({eta})")
+                .expect("Failed to create progress bar template")
+                .progress_chars("#>-"));
+
             for feed in &feeds {
                 let feed_clone = feed.clone();
                 let client_clone = client.clone();
+                let pb_clone = pb.clone();
                 tasks.push(tokio::spawn(async move {
-                    validate_feed(&feed_clone, &client_clone).await
+                    let result = validate_feed(&feed_clone, &client_clone).await;
+                    pb_clone.inc(1);
+                    result
                 }));
             }
 
             let results = join_all(tasks).await;
+            pb.finish_with_message("Validation complete");
+
             let mut validation_results = Vec::new();
 
             for result in results {
@@ -191,15 +203,26 @@ async fn main() -> Result<(), Box<dyn Error>> {
                 report.push_str("|------|--------|-------|\n");
 
                 let mut tasks = Vec::new();
+                let pb = ProgressBar::new(feeds.len() as u64);
+                pb.set_style(ProgressStyle::default_bar()
+                    .template("{spinner:.green} [{elapsed_precise}] [{bar:40.cyan/blue}] {pos}/{len} ({eta})")
+                    .expect("Failed to create progress bar template")
+                    .progress_chars("#>-"));
+
                 for feed in &feeds {
                     let feed_clone = feed.clone();
                     let client_clone = client.clone();
+                    let pb_clone = pb.clone();
                     tasks.push(tokio::spawn(async move {
-                        validate_feed(&feed_clone, &client_clone).await
+                        let result = validate_feed(&feed_clone, &client_clone).await;
+                        pb_clone.inc(1);
+                        result
                     }));
                 }
 
                 let results = join_all(tasks).await;
+                pb.finish_with_message("Validation complete");
+
                 for result in results {
                     if let Ok(Ok(validation)) = result {
                         let error = validation.error.replace("|", "\\|");

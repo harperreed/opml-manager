@@ -1,4 +1,4 @@
-use crate::common::{create_test_feed, create_test_feed_with_categories, extract_domain};
+use crate::common::{create_test_feed, create_test_feed_with_categories};
 use opml_manager::report::format_markdown_report;
 use opml_manager::Feed;
 use std::collections::{HashMap, HashSet};
