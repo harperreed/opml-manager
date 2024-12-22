@@ -56,6 +56,7 @@ pub fn parse_opml(content: &str) -> Result<Vec<Feed>> {
                 }
             }
         }
+        Ok(())
     }
 
     // Find and process the body tag
