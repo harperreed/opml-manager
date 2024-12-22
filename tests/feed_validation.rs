@@ -166,3 +166,57 @@ fn test_compressed_response() {
     assert_eq!(result.status, "invalid");
     mock.assert();
 }
+
+
+#[test]
+fn test_xml_parsing_error() {
+    let rt = common::get_test_runtime();
+    let mut server = mockito::Server::new();
+    let mock = server
+        .mock("GET", "/feed.xml")
+        .with_status(200)
+        .with_body("Invalid XML content")
+        .create();
+
+    let feed = common::create_test_feed("XML Error Feed", &format!("{}/feed.xml", server.url()));
+    let client = reqwest::Client::new();
+
+    let result = rt.block_on(async { validate_feed(&feed, &client).await });
+    assert!(matches!(result, Err(OPMLError::XMLParsing(_))));
+    mock.assert();
+}
+
+#[test]
+fn test_http_response_error() {
+    let rt = common::get_test_runtime();
+    let mut server = mockito::Server::new();
+    let mock = server
+        .mock("GET", "/feed.xml")
+        .with_status(404)
+        .create();
+
+    let feed = common::create_test_feed("HTTP Error Feed", &format!("{}/feed.xml", server.url()));
+    let client = reqwest::Client::new();
+
+    let result = rt.block_on(async { validate_feed(&feed, &client).await });
+    assert!(matches!(result, Err(OPMLError::Http(_))));
+    mock.assert();
+}
+
+#[test]
+fn test_malformed_feed_content() {
+    let rt = common::get_test_runtime();
+    let mut server = mockito::Server::new();
+    let mock = server
+        .mock("GET", "/feed.xml")
+        .with_status(200)
+        .with_body(r#"<?xml version="1.0"?><not-a-feed></not-a-feed>"#)
+        .create();
+
+    let feed = common::create_test_feed("Malformed Feed", &format!("{}/feed.xml", server.url()));
+    let client = reqwest::Client::new();
+
+    let result = rt.block_on(async { validate_feed(&feed, &client).await });
+    assert!(matches!(result, Err(OPMLError::FeedParsingError(_))));
+    mock.assert();
+}

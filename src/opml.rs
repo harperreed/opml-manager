@@ -46,25 +46,11 @@ pub fn parse_opml(content: &str) -> Result<Vec<Feed>> {
                     (type_attr, Some(xml_url), Some(title))
                         if type_attr.is_none() || type_attr == Some("rss") =>
                     {
-                        // Normalize URL: lowercase, remove trailing slash, standardize to https
-                        let mut normalized_url = xml_url.to_lowercase();
-                        if normalized_url.ends_with('/') {
-                            normalized_url.pop();
-                        }
-                        if normalized_url.starts_with("http://") {
-                            normalized_url = normalized_url.replacen("http://", "https://", 1);
-                        }
+                        let normalized_url = normalize_url(xml_url)?;
 
                         // Check if we've already seen this normalized URL
                         if !feeds.iter().any(|f| {
-                            let mut existing = f.xml_url.to_lowercase();
-                            if existing.ends_with('/') {
-                                existing.pop();
-                            }
-                            if existing.starts_with("http://") {
-                                existing = existing.replacen("http://", "https://", 1);
-                            }
-                            existing == normalized_url
+                            normalize_url(&f.xml_url).map(|url| url == normalized_url).unwrap_or(false)
                         }) {
                             feeds.push(Feed::new(
                                 title.to_string(),
@@ -73,6 +59,12 @@ pub fn parse_opml(content: &str) -> Result<Vec<Feed>> {
                                 categories.clone(),
                             ));
                         }
+                    }
+                    // Invalid feed node
+                    (_, Some(_), None) => {
+                        return Err(OPMLError::FeedAttributeError(
+                            "Feed missing required title attribute".to_string()
+                        ));
                     }
                     // Invalid or ignored node
                     _ => continue,
@@ -93,6 +85,13 @@ pub fn parse_opml(content: &str) -> Result<Vec<Feed>> {
     Ok(feeds)
 }
 
+/// Generates OPML content from a vector of feeds
+///
+/// # Arguments
+/// * `feeds` - Vector of Feed structs to include in the OPML
+///
+/// # Returns
+/// * `Result<String>` - The generated OPML content if successful
 pub fn generate_opml(feeds: &[Feed]) -> Result<String> {
     let mut output = String::from(
         r#"<?xml version="1.0" encoding="UTF-8"?>
@@ -203,4 +202,21 @@ mod tests {
         assert_eq!(feeds.len(), 1);
         assert_eq!(feeds[0].category, vec!["Category"]);
     }
+}
+
+
+fn normalize_url(url: &str) -> Result<String> {
+    let mut normalized = url.to_lowercase();
+    if normalized.ends_with('/') {
+        normalized.pop();
+    }
+    if normalized.starts_with("http://") {
+        normalized = normalized.replacen("http://", "https://", 1);
+    }
+    
+    // Validate URL format
+    url::Url::parse(&normalized)
+        .map_err(OPMLError::UrlParsing)?;
+        
+    Ok(normalized)
 }

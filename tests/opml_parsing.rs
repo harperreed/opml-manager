@@ -14,6 +14,34 @@ fn test_parse_empty_opml() {
 }
 
 #[test]
+fn test_invalid_url_parsing() {
+    let content = r#"<?xml version="1.0" encoding="UTF-8"?>
+    <opml version="2.0">
+        <head><title>Test</title></head>
+        <body>
+            <outline type="rss" text="Invalid URL" xmlUrl="not-a-url"/>
+        </body>
+    </opml>"#;
+
+    let result = parse_opml(content);
+    assert!(matches!(result, Err(OPMLError::UrlParsing(_))));
+}
+
+#[test]
+fn test_invalid_feed_attributes() {
+    let content = r#"<?xml version="1.0" encoding="UTF-8"?>
+    <opml version="2.0">
+        <head><title>Test</title></head>
+        <body>
+            <outline type="rss" xmlUrl="http://example.com"/>
+        </body>
+    </opml>"#;
+
+    let result = parse_opml(content);
+    assert!(matches!(result, Err(OPMLError::FeedAttributeError(_))));
+}
+
+#[test]
 fn test_empty_category_nodes() {
     let content = r#"<?xml version="1.0" encoding="UTF-8"?>
     <opml version="2.0">

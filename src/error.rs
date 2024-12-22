@@ -8,9 +8,6 @@ pub enum OPMLError {
     #[error("XML parsing error: {0}")]
     XMLParsing(#[from] roxmltree::Error),
 
-    #[error("XML parser error: {0}")]
-    XMLParser(String),
-
     #[error("HTTP error: {0}")]
     Http(#[from] reqwest::Error),
 
@@ -28,6 +25,15 @@ pub enum OPMLError {
 
     #[error("Category nesting too deep: maximum depth is {0} levels")]
     CategoryNestingTooDeep(usize),
+
+    #[error("Feed attribute error: {0}")]
+    FeedAttributeError(String),
+    
+    #[error("Feed parsing error: {0}")]
+    FeedParsingError(String),
+    
+    #[error("Response parsing error: {0}")]
+    ResponseParsingError(String),
 }
 
 pub type Result<T> = std::result::Result<T, OPMLError>;

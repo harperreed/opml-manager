@@ -26,13 +26,7 @@ pub async fn validate_feed(feed: &Feed, client: &Client) -> Result<ValidationRes
             Ok(resp) => resp,
             Err(e) => {
                 if e.is_timeout() {
-                    return Ok(ValidationResult {
-                        feed: feed.title.clone(),
-                        url: feed.xml_url.clone(),
-                        status: "error".to_string(),
-                        error: "Network timeout".to_string(),
-                        categories: feed.category.clone(),
-                    });
+                    return Err(OPMLError::Http(e));
                 }
 
                 if attempts < max_attempts && (e.is_connect() || e.is_request()) {
@@ -44,68 +38,38 @@ pub async fn validate_feed(feed: &Feed, client: &Client) -> Result<ValidationRes
                     continue;
                 }
 
-                return Ok(ValidationResult {
-                    feed: feed.title.clone(),
-                    url: feed.xml_url.clone(),
-                    status: "error".to_string(),
-                    error: e.to_string(),
-                    categories: feed.category.clone(),
-                });
+                return Err(OPMLError::Http(e));
             }
         };
 
         if response.status().is_success() {
-            match response.text().await {
-                Ok(text) => {
-                    match roxmltree::Document::parse(&text) {
-                        Ok(doc) => {
-                            let root = doc.root_element();
-                            let is_rss = root.children()
-                                .find(|n| n.has_tag_name("rss") || n.has_tag_name("channel"))
-                                .is_some();
-                            let is_atom = root.has_tag_name("feed");
-                            
-                            if is_rss || is_atom {
-                                return Ok(ValidationResult {
-                                    feed: feed.title.clone(),
-                                    url: feed.xml_url.clone(),
-                                    status: "valid".to_string(),
-                                    error: String::new(),
-                                    categories: feed.category.clone(),
-                                });
-                            }
-                            
-                            return Ok(ValidationResult {
-                                feed: feed.title.clone(),
-                                url: feed.xml_url.clone(),
-                                status: "invalid".to_string(),
-                                error: "Document is not a valid RSS or Atom feed".to_string(),
-                                categories: feed.category.clone(),
-                            });
-                        },
-                        Err(e) => {
-                            return Ok(ValidationResult {
-                                feed: feed.title.clone(),
-                                url: feed.xml_url.clone(),
-                                status: "invalid".to_string(),
-                                error: e.to_string(),
-                                categories: feed.category.clone(),
-                            });
-                        }
-                    }
-                },
-                Err(_) => {
-                    if attempts >= max_attempts {
-                        return Ok(ValidationResult {
+            let text = response.text().await
+                .map_err(|e| OPMLError::ResponseParsingError(e.to_string()))?;
+
+            match roxmltree::Document::parse(&text) {
+                Ok(doc) => {
+                    let root = doc.root_element();
+                    let is_rss = root.children()
+                        .find(|n| n.has_tag_name("rss") || n.has_tag_name("channel"))
+                        .is_some();
+                    let is_atom = root.has_tag_name("feed");
+                    
+                    if is_rss || is_atom {
+                        Ok(ValidationResult {
                             feed: feed.title.clone(),
                             url: feed.xml_url.clone(),
-                            status: "error".to_string(),
-                            error: "Failed to read response text".to_string(),
+                            status: "valid".to_string(),
+                            error: String::new(),
                             categories: feed.category.clone(),
-                        });
+                        })
+                    } else {
+                        Err(OPMLError::FeedParsingError(
+                            "Document is not a valid RSS or Atom feed".to_string()
+                        ))
                     }
-                }
-            }
+                },
+                Err(e) => Err(OPMLError::XMLParsing(e)),
+            }?
         } else if response.status().is_server_error() && attempts < max_attempts {
             let elapsed = start.elapsed();
             if elapsed < backoff {
@@ -114,23 +78,15 @@ pub async fn validate_feed(feed: &Feed, client: &Client) -> Result<ValidationRes
             backoff *= 2;
             continue;
         } else {
-            return Ok(ValidationResult {
-                feed: feed.title.clone(),
-                url: feed.xml_url.clone(),
-                status: "error".to_string(),
-                error: format!("HTTP {}", response.status()),
-                categories: feed.category.clone(),
-            });
+            return Err(OPMLError::Http(
+                reqwest::Error::status(response)
+            ));
         }
 
         if attempts >= max_attempts {
-            return Ok(ValidationResult {
-                feed: feed.title.clone(),
-                url: feed.xml_url.clone(),
-                status: "error".to_string(),
-                error: "Max retry attempts reached".to_string(),
-                categories: feed.category.clone(),
-            });
+            return Err(OPMLError::ValidationError(
+                "Max retry attempts reached".to_string()
+            ));
         }
     }
 }
