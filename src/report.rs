@@ -39,6 +39,8 @@ pub fn generate_summary(
     (seen_urls, duplicates, categories, domain_counter)
 }
 
+// In src/report.rs, modify format_markdown_report:
+
 pub fn format_markdown_report(
     feeds: &[Feed],
     seen_urls: &HashSet<String>,
@@ -65,6 +67,7 @@ pub fn format_markdown_report(
         report.push_str("No categories found\n\n");
     } else {
         report.push_str("## Categories\n\n");
+        // Count how many feeds are in each category
         let mut category_counter: HashMap<String, usize> = HashMap::new();
         for feed in feeds {
             for category in &feed.category {
@@ -79,7 +82,11 @@ pub fn format_markdown_report(
         sorted_categories.sort_by(|a, b| b.1.cmp(a.1));
 
         for (category, count) in sorted_categories {
-            report.push_str(&format!("| {} | {} |\n", escape_special_chars(category), count));
+            report.push_str(&format!(
+                "| {} | {} |\n",
+                escape_special_chars(category),
+                count
+            ));
         }
         report.push_str("\n");
     }
@@ -93,7 +100,11 @@ pub fn format_markdown_report(
     sorted_domains.sort_by(|a, b| b.1.cmp(a.1));
 
     for (domain, count) in sorted_domains.iter().take(10) {
-        report.push_str(&format!("| {} | {} |\n", domain, count));
+        report.push_str(&format!(
+            "| {} | {} |\n",
+            escape_special_chars(domain),
+            count
+        ));
     }
     report.push_str("\n");
 
@@ -106,11 +117,26 @@ pub fn format_markdown_report(
             report.push_str(&format!("### {}\n\n", escape_special_chars(&feed.title)));
             report.push_str(&format!("- URL: {}\n", escape_special_chars(&feed.xml_url)));
             if !feed.category.is_empty() {
-                report.push_str(&format!("- Categories: {}\n", feed.category.iter().map(|c| escape_special_chars(c)).collect::<Vec<_>>().join(" > ")));
+                let escaped_categories: Vec<_> = feed
+                    .category
+                    .iter()
+                    .map(|c| escape_special_chars(c))
+                    .collect();
+                report.push_str(&format!(
+                    "- Categories: {}\n",
+                    escaped_categories.join(" > ")
+                ));
             }
             report.push_str("\n");
         }
     }
+
+    // List of all feeds
+    report.push_str("## All Feeds\n\n");
+    for feed in feeds {
+        report.push_str(&format!("- {}\n", escape_special_chars(&feed.title)));
+    }
+    report.push_str("\n");
 
     report
 }

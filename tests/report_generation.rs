@@ -1,7 +1,7 @@
+use crate::common::{create_test_feed, create_test_feed_with_categories, extract_domain};
 use opml_manager::report::format_markdown_report;
 use opml_manager::Feed;
 use std::collections::{HashMap, HashSet};
-use crate::common::{create_test_feed, create_test_feed_with_categories, extract_domain};
 
 mod common;
 
@@ -34,10 +34,10 @@ fn test_special_characters() {
         "http://example.com/feed.xml",
     );
     let feeds = vec![feed];
-    
+
     let mut seen_urls = HashSet::new();
     seen_urls.insert("http://example.com/feed.xml".to_string());
-    
+
     let duplicates = vec![];
     let categories = HashSet::new();
     let mut domain_counter = HashMap::new();
@@ -51,18 +51,21 @@ fn test_special_characters() {
         &domain_counter,
     );
 
+    // Debug print the report content
+    println!("Report content:");
+    println!("{}", report);
+
     assert!(report.contains("Test &amp; Feed with &lt; &gt; Special &quot;Chars&quot;"));
 }
-
 #[test]
 fn test_duplicate_statistics() {
     let feed1 = create_test_feed("Feed 1", "http://example.com/feed.xml");
     let feed2 = create_test_feed("Feed 2", "http://example.com/feed.xml");
     let feeds = vec![feed1.clone(), feed2];
-    
+
     let mut seen_urls = HashSet::new();
     seen_urls.insert("http://example.com/feed.xml".to_string());
-    
+
     let duplicates = vec![&feed1];
     let categories = HashSet::new();
     let mut domain_counter = HashMap::new();
@@ -88,22 +91,19 @@ fn test_category_grouping() {
         "http://tech.com/feed.xml",
         vec!["Technology", "News"],
     );
-    let feed2 = create_test_feed_with_categories(
-        "News Feed",
-        "http://news.com/feed.xml",
-        vec!["News"],
-    );
+    let feed2 =
+        create_test_feed_with_categories("News Feed", "http://news.com/feed.xml", vec!["News"]);
     let feeds = vec![feed1, feed2];
-    
+
     let mut seen_urls = HashSet::new();
     seen_urls.insert("http://tech.com/feed.xml".to_string());
     seen_urls.insert("http://news.com/feed.xml".to_string());
-    
+
     let duplicates = vec![];
     let mut categories = HashSet::new();
     categories.insert("Technology".to_string());
     categories.insert("News".to_string());
-    
+
     let mut domain_counter = HashMap::new();
     domain_counter.insert("tech.com".to_string(), 1);
     domain_counter.insert("news.com".to_string(), 1);
