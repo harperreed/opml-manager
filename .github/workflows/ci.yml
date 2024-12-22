@@ -49,15 +49,18 @@ jobs:
 
       - name: Create GitHub Release
         id: create_release
-        uses: actions/create-release@v1
+        uses: softprops/action-gh-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tag_name: ${{ github.sha }}
-          release_name: Release ${{ github.sha }}
+          name: ${{ github.ref_name }}
+          body: |
+            Release ${{ github.ref_name }}
+            
+            Changes in this release:
+            ${{ github.event.head_commit.message }}
           draft: false
           prerelease: false
-
       - name: Set executable permissions
         run: chmod +x opml-manager
 
