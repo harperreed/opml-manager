@@ -25,12 +25,29 @@ pub async fn validate_feed(feed: &Feed, client: &Client) -> Result<ValidationRes
     let result = if response.status().is_success() {
         let text = response.text().await?;
         match roxmltree::Document::parse(&text) {
-            Ok(_) => ValidationResult {
+            Ok(doc) => {
+                // Check for RSS or Atom feed markers
+                let is_rss = doc.root_element().find_child(|n| n.has_tag_name("rss")).is_some() 
+                    || doc.root_element().find_child(|n| n.has_tag_name("channel")).is_some();
+                let is_atom = doc.root_element().has_tag_name("feed");
+                
+                if is_rss || is_atom {
+                    ValidationResult {
                 feed: feed.title.clone(),
                 url: feed.xml_url.clone(),
-                status: "valid".to_string(),
-                error: String::new(),
-                categories: feed.category.clone(),
+                        status: "valid".to_string(),
+                        error: String::new(),
+                        categories: feed.category.clone(),
+                    }
+                } else {
+                    ValidationResult {
+                        feed: feed.title.clone(),
+                        url: feed.xml_url.clone(),
+                        status: "invalid".to_string(),
+                        error: "Document is not a valid RSS or Atom feed".to_string(),
+                        categories: feed.category.clone(),
+                    }
+                }
             },
             Err(e) => ValidationResult {
                 feed: feed.title.clone(),
