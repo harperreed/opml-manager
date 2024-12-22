@@ -1,8 +1,8 @@
 use crate::error::Result;
 use crate::Feed;
 use chrono::{DateTime, Local};
-use roxmltree::Node;
 use std::collections::HashMap;
+use xmlparser::{Tokenizer, Token};
 
 /// Parses an OPML file content into a vector of Feed structs
 ///
@@ -12,61 +12,46 @@ use std::collections::HashMap;
 /// # Returns
 /// * `Result<Vec<Feed>>` - A vector of Feed structs if successful
 pub fn parse_opml(content: &str) -> Result<Vec<Feed>> {
-    let doc = roxmltree::Document::parse(content)?;
     let mut feeds = Vec::new();
+    let mut categories = Vec::new();
+    let mut current_feed: Option<Feed> = None;
 
-    // Recursively process outline nodes
-    const MAX_CATEGORY_DEPTH: usize = 100;
-
-    fn process_outline(
-        node: Node,
-        current_categories: &[String],
-        feeds: &mut Vec<Feed>,
-    ) -> Result<()> {
-        if current_categories.len() >= MAX_CATEGORY_DEPTH {
-            return Err(crate::error::OPMLError::CategoryNestingTooDeep(MAX_CATEGORY_DEPTH));
-        }
-        for child in node.children() {
-            if child.has_tag_name("outline") {
-                let mut categories = current_categories.to_vec();
-
-                match (
-                    child.attribute("type"),
-                    child.attribute("xmlUrl"),
-                    child.attribute("text").or(child.attribute("title")),
-                ) {
-                    // Category node (no type or xmlUrl, but has text/title)
-                    (None, None, Some(title)) => {
-                        categories.push(title.to_string());
-                        process_outline(child, &categories, feeds)?;
-                    }
-                    // Feed node (has xmlUrl or type="rss")
-                    (type_attr, Some(xml_url), Some(title))
-                        if type_attr.is_none() || type_attr == Some("rss") =>
-                    {
-                        feeds.push(Feed::new(
-                            title.to_string(),
-                            xml_url.to_string(),
-                            child.attribute("htmlUrl").map(String::from),
-                            categories.clone(),
-                        ));
-                    }
-                    // Invalid or ignored node
-                    _ => continue,
+    let mut tokenizer = Tokenizer::from(content);
+    while let Some(token) = tokenizer.next() {
+        match token? {
+            Token::ElementStart { local, .. } => {
+                if local.as_str() == "outline" {
+                    current_feed = Some(Feed::new(String::new(), String::new(), None, categories.clone()));
                 }
             }
+            Token::Attribute { local, value, .. } => {
+                if let Some(feed) = current_feed.as_mut() {
+                    match local.as_str() {
+                        "type" => {
+                            if value.as_str() != "rss" {
+                                current_feed = None;
+                            }
+                        }
+                        "xmlUrl" => feed.xml_url = value.to_string(),
+                        "text" | "title" => feed.title = value.to_string(),
+                        "htmlUrl" => feed.html_url = Some(value.to_string()),
+                        _ => {}
+                    }
+                }
+            }
+            Token::ElementEnd { end, .. } => {
+                if end.is_empty() {
+                    if let Some(feed) = current_feed.take() {
+                        if !feed.xml_url.is_empty() && !feed.title.is_empty() {
+                            feeds.push(feed);
+                        }
+                    }
+                }
+            }
+            _ => {}
         }
-        Ok(())
     }
 
-    // Find and process the body tag
-    let body = doc
-        .root()
-        .descendants()
-        .find(|n| n.has_tag_name("body"))
-        .ok_or(crate::error::OPMLError::NoBodyTag)?;
-
-    process_outline(body, &[], &mut feeds)?;
     Ok(feeds)
 }
 
