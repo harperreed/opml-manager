@@ -1,10 +1,10 @@
-use mockito; // Import mockito directly
 use opml_manager::{
     feed::Feed,
     opml::{generate_opml, parse_opml},
     report::{format_markdown_report, generate_summary},
     validation::validate_feed,
 };
+use mockito; // Import mockito directly
 use std::collections::{HashMap, HashSet};
 
 mod opml_parsing {
@@ -72,26 +72,17 @@ mod opml_parsing {
 
         let feeds = parse_opml(content).unwrap();
         assert_eq!(feeds.len(), 3);
-
+        
         // Check uncategorized feed
-        let uncategorized = feeds
-            .iter()
-            .find(|f| f.xml_url.ends_with("feed1.xml"))
-            .unwrap();
+        let uncategorized = feeds.iter().find(|f| f.xml_url.ends_with("feed1.xml")).unwrap();
         assert!(uncategorized.category.is_empty());
-
+        
         // Check categorized feed
-        let categorized = feeds
-            .iter()
-            .find(|f| f.xml_url.ends_with("feed2.xml"))
-            .unwrap();
+        let categorized = feeds.iter().find(|f| f.xml_url.ends_with("feed2.xml")).unwrap();
         assert_eq!(categorized.category, vec!["Category1"]);
-
+        
         // Check nested feed
-        let nested = feeds
-            .iter()
-            .find(|f| f.xml_url.ends_with("feed3.xml"))
-            .unwrap();
+        let nested = feeds.iter().find(|f| f.xml_url.ends_with("feed3.xml")).unwrap();
         assert_eq!(nested.category, vec!["Category1", "Subcategory"]);
     }
 }
@@ -126,14 +117,14 @@ mod opml_generation {
         ];
 
         let output = generate_opml(&feeds).unwrap();
-
+        
         // Check basic structure
         assert!(output.contains("<opml version=\"2.0\">"));
-
+        
         // Check category structure
         assert!(output.contains(r#"<outline text="Category1">"#));
         assert!(output.contains(r#"<outline text="Category2">"#));
-
+        
         // Check feed entries
         assert!(output.contains(r#"type="rss" text="Test Feed 1""#));
         assert!(output.contains(r#"type="rss" text="Test Feed 2""#));
@@ -145,71 +136,89 @@ mod opml_generation {
 mod feed_validation {
     use super::*;
 
-    #[tokio::test]
-    async fn test_validate_valid_feed() {
-        let mut server = mockito::Server::new();
-        let mock = server.mock("GET", "/feed.xml")
-            .with_status(200)
-            .with_body(r#"<?xml version="1.0"?><rss version="2.0"><channel><title>Test</title></channel></rss>"#)
-            .create();
-
-        let feed = Feed::new(
-            "Test Feed".to_string(),
-            format!("{}/feed.xml", server.url()),
-            None,
-            vec![],
-        );
-
-        let client = reqwest::Client::new();
-        let result = validate_feed(&feed, &client).await.unwrap();
-
-        assert_eq!(result.status, "valid");
-        assert!(result.error.is_empty());
-        mock.assert();
+    // Create a runtime for all async tests
+    fn runtime() -> tokio::runtime::Runtime {
+        tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .unwrap()
     }
 
-    #[tokio::test]
-    async fn test_validate_invalid_feed() {
-        let mut server = mockito::Server::new();
-        let mock = server
-            .mock("GET", "/feed.xml")
-            .with_status(200)
-            .with_body("Not XML content")
-            .create();
+    #[test]
+    fn test_validate_valid_feed() {
+        let rt = runtime();
+        rt.block_on(async {
+            let mut server = mockito::Server::new();
+            let mock = server.mock("GET", "/feed.xml")
+                .with_status(200)
+                .with_body(r#"<?xml version="1.0"?><rss version="2.0"><channel><title>Test</title></channel></rss>"#)
+                .create();
 
-        let feed = Feed::new(
-            "Test Feed".to_string(),
-            format!("{}/feed.xml", server.url()),
-            None,
-            vec![],
-        );
+            let feed = Feed::new(
+                "Test Feed".to_string(),
+                format!("{}/feed.xml", server.url()),
+                None,
+                vec![],
+            );
 
-        let client = reqwest::Client::new();
-        let result = validate_feed(&feed, &client).await.unwrap();
-
-        assert_eq!(result.status, "invalid");
-        assert!(!result.error.is_empty());
-        mock.assert();
+            let client = reqwest::Client::new();
+            let result = validate_feed(&feed, &client).await.unwrap();
+            
+            assert_eq!(result.status, "valid");
+            assert!(result.error.is_empty());
+            mock.assert();
+        });
     }
 
-    #[tokio::test]
-    async fn test_validate_unreachable_feed() {
-        let mut server = mockito::Server::new();
-        let mock = server.mock("GET", "/feed.xml").with_status(404).create();
+    #[test]
+    fn test_validate_invalid_feed() {
+        let rt = runtime();
+        rt.block_on(async {
+            let mut server = mockito::Server::new();
+            let mock = server.mock("GET", "/feed.xml")
+                .with_status(200)
+                .with_body("Not XML content")
+                .create();
 
-        let feed = Feed::new(
-            "Test Feed".to_string(),
-            format!("{}/feed.xml", server.url()),
-            None,
-            vec![],
-        );
+            let feed = Feed::new(
+                "Test Feed".to_string(),
+                format!("{}/feed.xml", server.url()),
+                None,
+                vec![],
+            );
 
-        let client = reqwest::Client::new();
-        let result = validate_feed(&feed, &client).await.unwrap();
+            let client = reqwest::Client::new();
+            let result = validate_feed(&feed, &client).await.unwrap();
+            
+            assert_eq!(result.status, "invalid");
+            assert!(!result.error.is_empty());
+            mock.assert();
+        });
+    }
 
-        assert_eq!(result.status, "error");
-        assert!(result.error.contains("404"));
-        mock.assert();
+    #[test]
+    fn test_validate_unreachable_feed() {
+        let rt = runtime();
+        rt.block_on(async {
+            let mut server = mockito::Server::new();
+            let mock = server.mock("GET", "/feed.xml")
+                .with_status(404)
+                .create();
+
+            let feed = Feed::new(
+                "Test Feed".to_string(),
+                format!("{}/feed.xml", server.url()),
+                None,
+                vec![],
+            );
+
+            let client = reqwest::Client::new();
+            let result = validate_feed(&feed, &client).await.unwrap();
+            
+            assert_eq!(result.status, "error");
+            assert!(result.error.contains("404"));
+            mock.assert();
+        });
     }
 }
 
@@ -234,7 +243,7 @@ mod report_generation {
         ];
 
         let (seen_urls, duplicates, categories, domain_counter) = generate_summary(&feeds);
-
+        
         assert_eq!(seen_urls.len(), 1); // Only one unique URL
         assert_eq!(duplicates.len(), 1); // One duplicate
         assert_eq!(categories.len(), 2); // Two unique categories
@@ -243,32 +252,28 @@ mod report_generation {
 
     #[test]
     fn test_format_markdown_report() {
-        let feeds = vec![Feed::new(
-            "Test Feed".to_string(),
-            "http://example.com/feed.xml".to_string(),
-            None,
-            vec!["Category1".to_string()],
-        )];
+        let feeds = vec![
+            Feed::new(
+                "Test Feed".to_string(),
+                "http://example.com/feed.xml".to_string(),
+                None,
+                vec!["Category1".to_string()],
+            ),
+        ];
 
         let mut seen_urls = HashSet::new();
         seen_urls.insert("http://example.com/feed.xml".to_string());
 
         let duplicates = vec![];
-
+        
         let mut categories = HashSet::new();
         categories.insert("Category1".to_string());
 
         let mut domain_counter = HashMap::new();
         domain_counter.insert("example.com".to_string(), 1);
 
-        let report = format_markdown_report(
-            &feeds,
-            &seen_urls,
-            &duplicates,
-            &categories,
-            &domain_counter,
-        );
-
+        let report = format_markdown_report(&feeds, &seen_urls, &duplicates, &categories, &domain_counter);
+        
         assert!(report.contains("# OPML Analysis Report"));
         assert!(report.contains("Total Feeds: 1"));
         assert!(report.contains("Unique Feeds: 1"));
