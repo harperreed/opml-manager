@@ -3,6 +3,13 @@ use chrono::Local;
 use std::collections::{HashMap, HashSet};
 use url::Url;
 
+fn escape_special_chars(text: &str) -> String {
+    text.replace("&", "&amp;")
+        .replace("<", "&lt;")
+        .replace(">", "&gt;")
+        .replace("\"", "&quot;")
+}
+
 pub fn generate_summary(
     feeds: &[Feed],
 ) -> (
@@ -96,7 +103,7 @@ pub fn format_markdown_report(
     } else {
         report.push_str("## Duplicate Feeds Found\n\n");
         for feed in duplicates {
-            report.push_str(&format!("### {}\n\n", feed.title));
+            report.push_str(&format!("### {}\n\n", feed.title.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")));
             report.push_str(&format!("- URL: {}\n", feed.xml_url));
             if !feed.category.is_empty() {
                 report.push_str(&format!("- Categories: {}\n", feed.category.join(" > ")));
