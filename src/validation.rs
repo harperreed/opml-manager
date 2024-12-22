@@ -27,9 +27,11 @@ pub async fn validate_feed(feed: &Feed, client: &Client) -> Result<ValidationRes
         match roxmltree::Document::parse(&text) {
             Ok(doc) => {
                 // Check for RSS or Atom feed markers
-                let is_rss = doc.root_element().find_child(|n| n.has_tag_name("rss")).is_some() 
-                    || doc.root_element().find_child(|n| n.has_tag_name("channel")).is_some();
-                let is_atom = doc.root_element().has_tag_name("feed");
+                let root = doc.root_element();
+                let is_rss = root.children()
+                    .find(|n| n.has_tag_name("rss") || n.has_tag_name("channel"))
+                    .is_some();
+                let is_atom = root.has_tag_name("feed");
                 
                 if is_rss || is_atom {
                     ValidationResult {
