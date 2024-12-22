@@ -1,9 +1,12 @@
+use crate::Feed;
+use ratatui::widgets::ListState;
 use std::collections::HashMap;
-use crate::feed::Feed;
 
 pub struct TuiApp {
     pub feeds: Vec<Feed>,
     pub categories: HashMap<String, Vec<Feed>>,
+    pub categories_state: ListState,
+    pub feeds_state: ListState,
     pub selected_category: Option<String>,
     pub selected_feed: Option<usize>,
     pub mode: AppMode,
@@ -19,9 +22,16 @@ pub enum AppMode {
 
 impl TuiApp {
     pub fn new() -> Self {
+        let mut categories_state = ListState::default();
+        categories_state.select(Some(0));
+        let mut feeds_state = ListState::default();
+        feeds_state.select(Some(0));
+
         TuiApp {
             feeds: Vec::new(),
             categories: HashMap::new(),
+            categories_state,
+            feeds_state,
             selected_category: None,
             selected_feed: None,
             mode: AppMode::Normal,
@@ -38,7 +48,10 @@ impl TuiApp {
         self.categories.clear();
         for feed in &self.feeds {
             for category in &feed.category {
-                self.categories.entry(category.clone()).or_default().push(feed.clone());
+                self.categories
+                    .entry(category.clone())
+                    .or_default()
+                    .push(feed.clone());
             }
         }
     }

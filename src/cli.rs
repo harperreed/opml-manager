@@ -42,4 +42,10 @@ pub enum Commands {
         #[arg(long, default_value = "10")]
         timeout: u64,
     },
+    /// Launch the interactive TUI mode
+    Interactive {
+        /// Input OPML file path
+        #[arg(default_value = "feeds.opml")]
+        input_file: String,
+    },
 }

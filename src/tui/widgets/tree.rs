@@ -1,6 +1,5 @@
 use ratatui::{
-    backend::Backend,
-    layout::{Constraint, Direction, Layout, Rect},
+    layout::Rect,
     style::{Color, Modifier, Style},
     widgets::{Block, Borders, List, ListItem, ListState},
     Frame,
@@ -22,7 +21,7 @@ impl CategoryTree {
     pub fn next(&mut self) {
         let i = match self.state.selected() {
             Some(i) => {
-                if i >= self.categories.len() - 1 {
+                if i >= self.categories.len().saturating_sub(1) {
                     0
                 } else {
                     i + 1
@@ -37,7 +36,7 @@ impl CategoryTree {
         let i = match self.state.selected() {
             Some(i) => {
                 if i == 0 {
-                    self.categories.len() - 1
+                    self.categories.len().saturating_sub(1)
                 } else {
                     i - 1
                 }
@@ -47,7 +46,7 @@ impl CategoryTree {
         self.state.select(Some(i));
     }
 
-    pub fn draw<B: Backend>(&self, f: &mut Frame<B>, area: Rect) {
+    pub fn draw(&self, frame: &mut Frame, area: Rect) {
         let items: Vec<ListItem> = self
             .categories
             .keys()
@@ -55,9 +54,13 @@ impl CategoryTree {
             .collect();
         let list = List::new(items)
             .block(Block::default().borders(Borders::ALL).title("Categories"))
-            .highlight_style(Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD))
+            .highlight_style(
+                Style::default()
+                    .fg(Color::Yellow)
+                    .add_modifier(Modifier::BOLD),
+            )
             .highlight_symbol("> ");
 
-        f.render_stateful_widget(list, area, &mut self.state.clone());
+        frame.render_stateful_widget(list, area, &mut self.state.clone());
     }
 }

@@ -1,20 +1,49 @@
 use clap::Parser;
+use crossterm::event::{self, Event, KeyCode};
+use crossterm::terminal::{disable_raw_mode, enable_raw_mode};
 use futures::future::join_all;
+use ratatui::backend::CrosstermBackend;
+use ratatui::Terminal;
 use reqwest::Client;
 use std::error::Error;
 use std::fs;
 use std::path::Path;
+use std::sync::mpsc;
+use std::thread;
 use std::time::Duration;
 
 use opml_manager::cli::{Cli, Commands};
 use opml_manager::opml::{generate_opml, parse_opml};
 use opml_manager::report::{format_markdown_report, generate_summary};
+use opml_manager::tui::events::Event as AppEvent;
+use opml_manager::tui::{draw_ui, handle_events, TuiApp};
 use opml_manager::validation::validate_feed;
-use opml_manager::tui::{TuiApp, handle_events, draw_ui};
-use crossterm::terminal::{enable_raw_mode, disable_raw_mode};
-use ratatui::backend::CrosstermBackend;
-use ratatui::Terminal;
-use crossterm::event::{Event, KeyCode};
+
+struct Events {
+    rx: mpsc::Receiver<AppEvent<KeyCode>>,
+}
+
+impl Events {
+    fn new(tick_rate: Duration) -> Events {
+        let (tx, rx) = mpsc::channel();
+
+        thread::spawn(move || loop {
+            if event::poll(tick_rate).unwrap() {
+                if let Ok(evt) = event::read() {
+                    if let Event::Key(key) = evt {
+                        let _ = tx.send(AppEvent::Input(key.code));
+                    }
+                }
+            }
+        });
+
+        Events { rx }
+    }
+
+    fn next(&self) -> Result<AppEvent<KeyCode>, mpsc::RecvError> {
+        self.rx.recv()
+    }
+}
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
@@ -210,25 +239,25 @@ async fn main() -> Result<(), Box<dyn Error>> {
             println!("✅ Report generated: {}", output_file);
         }
 
-        Commands::Interactive => {
+        Commands::Interactive { input_file } => {
             enable_raw_mode()?;
             let stdout = std::io::stdout();
             let backend = CrosstermBackend::new(stdout);
             let mut terminal = Terminal::new(backend)?;
 
             let mut app = TuiApp::new();
-            app.load_feeds(parse_opml(&fs::read_to_string("feeds.opml")?)?);
+            app.load_feeds(parse_opml(&fs::read_to_string(input_file)?)?);
 
             let events = Events::new(Duration::from_millis(200));
 
             loop {
                 terminal.draw(|f| draw_ui(f, &app))?;
 
-                if let Event::Input(key) = events.next()? {
-                    handle_events(&mut app, Event::Input(key));
-                    if key == KeyCode::Char('q') {
+                if let Ok(event) = events.next() {
+                    if let AppEvent::Input(KeyCode::Char('q')) = event {
                         break;
                     }
+                    handle_events(&mut app, event);
                 }
             }
 

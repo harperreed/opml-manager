@@ -30,6 +30,7 @@ pub mod error;
 pub mod feed;
 pub mod opml;
 pub mod report;
+pub mod tui;
 pub mod validation;
 
 pub use error::{OPMLError, Result};
