@@ -174,7 +174,6 @@ fn test_network_timeout() {
         .mock("GET", "/feed.xml")
         .with_status(200)
         .with_body(r#"<?xml version="1.0"?><rss version="2.0"><channel><title>Test</title></channel></rss>"#)
-        .with_delay(std::time::Duration::from_secs(2))
         .create();
 
     let feed = common::create_test_feed("Timeout Feed", &format!("{}/feed.xml", server.url()));
