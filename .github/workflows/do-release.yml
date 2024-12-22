@@ -10,6 +10,9 @@ on:
             - ".mise.toml"
     workflow_dispatch:
 
+permissions:
+    contents: write
+
 env:
     BINARY_NAME: "opml-manager" # Set your binary name here
 
