@@ -1,5 +1,5 @@
-use opml_manager::opml::parse_opml;
 use opml_manager::error::OPMLError;
+use opml_manager::opml::parse_opml;
 
 #[test]
 fn test_parse_empty_opml() {
@@ -47,16 +47,19 @@ fn test_missing_required_attributes() {
 
 #[test]
 fn test_deeply_nested_categories() {
-    let mut content = String::from(r#"<?xml version="1.0" encoding="UTF-8"?>
+    let mut content = String::from(
+        r#"<?xml version="1.0" encoding="UTF-8"?>
     <opml version="2.0">
         <head><title>Test</title></head>
-        <body>"#);
-    
+        <body>"#,
+    );
+
     // Create 101 levels of nesting
     for i in 0..101 {
         content.push_str(&format!("<outline text=\"Category{}\">", i));
     }
-    content.push_str(r#"<outline type="rss" text="Deep Feed" xmlUrl="http://example.com/feed.xml"/>"#);
+    content
+        .push_str(r#"<outline type="rss" text="Deep Feed" xmlUrl="http://example.com/feed.xml"/>"#);
     for _ in 0..101 {
         content.push_str("</outline>");
     }
@@ -84,11 +87,13 @@ fn test_malformed_category_structure() {
 
 #[test]
 fn test_large_opml() {
-    let mut content = String::from(r#"<?xml version="1.0" encoding="UTF-8"?>
+    let mut content = String::from(
+        r#"<?xml version="1.0" encoding="UTF-8"?>
     <opml version="2.0">
         <head><title>Large Test</title></head>
-        <body>"#);
-    
+        <body>"#,
+    );
+
     // Add 10,000 feeds
     for i in 0..10_000 {
         content.push_str(&format!(
@@ -109,4 +114,21 @@ fn test_invalid_utf8_sequences() {
 
     let result = parse_opml(content);
     assert!(result.is_err());
+}
+
+#[test]
+fn test_url_normalization() {
+    let content = r#"<?xml version="1.0" encoding="UTF-8"?>
+    <opml version="2.0">
+        <head><title>Normalization Test</title></head>
+        <body>
+            <outline type="rss" text="Feed 1" xmlUrl="http://example.com/feed"/>
+            <outline type="rss" text="Feed 2" xmlUrl="http://example.com/feed/"/>
+            <outline type="rss" text="Feed 3" xmlUrl="https://example.com/feed"/>
+            <outline type="rss" text="Feed 4" xmlUrl="http://example.com/FEED"/>
+        </body>
+    </opml>"#;
+
+    let feeds = parse_opml(content).unwrap();
+    assert_eq!(feeds.len(), 1); // All URLs should be normalized to the same value
 }

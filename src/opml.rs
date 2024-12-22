@@ -24,7 +24,9 @@ pub fn parse_opml(content: &str) -> Result<Vec<Feed>> {
         feeds: &mut Vec<Feed>,
     ) -> Result<()> {
         if current_categories.len() >= MAX_CATEGORY_DEPTH {
-            return Err(crate::error::OPMLError::CategoryNestingTooDeep(MAX_CATEGORY_DEPTH));
+            return Err(crate::error::OPMLError::CategoryNestingTooDeep(
+                MAX_CATEGORY_DEPTH,
+            ));
         }
         for child in node.children() {
             if child.has_tag_name("outline") {
@@ -44,12 +46,33 @@ pub fn parse_opml(content: &str) -> Result<Vec<Feed>> {
                     (type_attr, Some(xml_url), Some(title))
                         if type_attr.is_none() || type_attr == Some("rss") =>
                     {
-                        feeds.push(Feed::new(
-                            title.to_string(),
-                            xml_url.to_string(),
-                            child.attribute("htmlUrl").map(String::from),
-                            categories.clone(),
-                        ));
+                        // Normalize URL: lowercase, remove trailing slash, standardize to https
+                        let mut normalized_url = xml_url.to_lowercase();
+                        if normalized_url.ends_with('/') {
+                            normalized_url.pop();
+                        }
+                        if normalized_url.starts_with("http://") {
+                            normalized_url = normalized_url.replacen("http://", "https://", 1);
+                        }
+
+                        // Check if we've already seen this normalized URL
+                        if !feeds.iter().any(|f| {
+                            let mut existing = f.xml_url.to_lowercase();
+                            if existing.ends_with('/') {
+                                existing.pop();
+                            }
+                            if existing.starts_with("http://") {
+                                existing = existing.replacen("http://", "https://", 1);
+                            }
+                            existing == normalized_url
+                        }) {
+                            feeds.push(Feed::new(
+                                title.to_string(),
+                                xml_url.to_string(),
+                                child.attribute("htmlUrl").map(String::from),
+                                categories.clone(),
+                            ));
+                        }
                     }
                     // Invalid or ignored node
                     _ => continue,

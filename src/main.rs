@@ -12,6 +12,17 @@ use opml_manager::opml::{generate_opml, parse_opml};
 use opml_manager::report::{format_markdown_report, generate_summary};
 use opml_manager::validation::validate_feed;
 
+fn normalize_url(url: &str) -> String {
+    let mut normalized_url = url.to_lowercase();
+    if normalized_url.ends_with('/') {
+        normalized_url.pop();
+    }
+    if normalized_url.starts_with("http://") {
+        normalized_url = normalized_url.replacen("http://", "https://", 1);
+    }
+    normalized_url
+}
+
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
     let cli = Cli::parse();
@@ -54,7 +65,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
             let mut seen = std::collections::HashSet::new();
 
             for feed in feeds {
-                if seen.insert(feed.xml_url.to_lowercase()) {
+                if seen.insert(normalize_url(&feed.xml_url)) {
                     unique_feeds.push(feed);
                 }
             }
