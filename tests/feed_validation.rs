@@ -165,3 +165,52 @@ fn test_compressed_response() {
     assert_eq!(result.status, "invalid");
     mock.assert();
 }
+
+#[test]
+fn test_network_timeout() {
+    let rt = common::get_test_runtime();
+    let mut server = mockito::Server::new();
+    let mock = server
+        .mock("GET", "/feed.xml")
+        .with_status(200)
+        .with_body(r#"<?xml version="1.0"?><rss version="2.0"><channel><title>Test</title></channel></rss>"#)
+        .with_delay(std::time::Duration::from_secs(2))
+        .create();
+
+    let feed = common::create_test_feed("Timeout Feed", &format!("{}/feed.xml", server.url()));
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(1))
+        .build()
+        .unwrap();
+
+    let result = rt
+        .block_on(async { validate_feed(&feed, &client).await })
+        .unwrap();
+
+    assert_eq!(result.status, "error");
+    assert_eq!(result.error, "Network timeout");
+    mock.assert();
+}
+
+#[test]
+fn test_retry_logic() {
+    let rt = common::get_test_runtime();
+    let mut server = mockito::Server::new();
+    let mock = server
+        .mock("GET", "/feed.xml")
+        .with_status(500)
+        .with_body("Internal Server Error")
+        .expect(5)
+        .create();
+
+    let feed = common::create_test_feed("Retry Feed", &format!("{}/feed.xml", server.url()));
+    let client = reqwest::Client::new();
+
+    let result = rt
+        .block_on(async { validate_feed(&feed, &client).await })
+        .unwrap();
+
+    assert_eq!(result.status, "error");
+    assert_eq!(result.error, "Max retry attempts reached");
+    mock.assert();
+}
