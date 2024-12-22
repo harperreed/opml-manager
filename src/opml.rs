@@ -1,4 +1,4 @@
-use crate::error::Result;
+use crate::error::{OPMLError, Result};
 use crate::Feed;
 use chrono::{DateTime, Local};
 use roxmltree::Node;

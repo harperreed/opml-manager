@@ -1,3 +1,4 @@
+use crate::error::OPMLError;
 use crate::{Feed, Result};
 use reqwest::Client;
 use serde::Serialize;
@@ -79,7 +80,7 @@ pub async fn validate_feed(feed: &Feed, client: &Client) -> Result<ValidationRes
             continue;
         } else {
             return Err(OPMLError::Http(
-                reqwest::Error::status(response)
+                reqwest::Error::from(reqwest::StatusError::new(response))
             ));
         }
 
