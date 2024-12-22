@@ -132,3 +132,39 @@ fn test_url_normalization() {
     let feeds = parse_opml(content).unwrap();
     assert_eq!(feeds.len(), 1); // All URLs should be normalized to the same value
 }
+
+#[test]
+fn test_nested_categories() {
+    let content = r#"<?xml version="1.0" encoding="UTF-8"?>
+    <opml version="2.0">
+        <head><title>Nested Categories Test</title></head>
+        <body>
+            <outline text="Category 1">
+                <outline text="Subcategory 1.1">
+                    <outline type="rss" text="Feed 1" xmlUrl="http://example.com/feed1.xml"/>
+                </outline>
+                <outline text="Subcategory 1.2">
+                    <outline type="rss" text="Feed 2" xmlUrl="http://example.com/feed2.xml"/>
+                </outline>
+            </outline>
+            <outline text="Category 2">
+                <outline type="rss" text="Feed 3" xmlUrl="http://example.com/feed3.xml"/>
+            </outline>
+        </body>
+    </opml>"#;
+
+    let feeds = parse_opml(content).unwrap();
+    assert_eq!(feeds.len(), 3);
+
+    assert_eq!(feeds[0].title, "Feed 1");
+    assert_eq!(feeds[0].xml_url, "http://example.com/feed1.xml");
+    assert_eq!(feeds[0].category, vec!["Category 1", "Subcategory 1.1"]);
+
+    assert_eq!(feeds[1].title, "Feed 2");
+    assert_eq!(feeds[1].xml_url, "http://example.com/feed2.xml");
+    assert_eq!(feeds[1].category, vec!["Category 1", "Subcategory 1.2"]);
+
+    assert_eq!(feeds[2].title, "Feed 3");
+    assert_eq!(feeds[2].xml_url, "http://example.com/feed3.xml");
+    assert_eq!(feeds[2].category, vec!["Category 2"]);
+}

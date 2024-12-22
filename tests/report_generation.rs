@@ -122,3 +122,47 @@ fn test_category_grouping() {
     assert!(report.contains("tech.com"));
     assert!(report.contains("news.com"));
 }
+
+#[test]
+fn test_nested_categories_in_report() {
+    let feed1 = create_test_feed_with_categories(
+        "Tech Feed",
+        "http://tech.com/feed.xml",
+        vec!["Technology", "News"],
+    );
+    let feed2 = create_test_feed_with_categories(
+        "Sub Tech Feed",
+        "http://subtech.com/feed.xml",
+        vec!["Technology", "News", "Subcategory"],
+    );
+    let feeds = vec![feed1, feed2];
+
+    let mut seen_urls = HashSet::new();
+    seen_urls.insert("http://tech.com/feed.xml".to_string());
+    seen_urls.insert("http://subtech.com/feed.xml".to_string());
+
+    let duplicates = vec![];
+    let mut categories = HashSet::new();
+    categories.insert("Technology".to_string());
+    categories.insert("News".to_string());
+    categories.insert("Subcategory".to_string());
+
+    let mut domain_counter = HashMap::new();
+    domain_counter.insert("tech.com".to_string(), 1);
+    domain_counter.insert("subtech.com".to_string(), 1);
+
+    let report = format_markdown_report(
+        &feeds,
+        &seen_urls,
+        &duplicates,
+        &categories,
+        &domain_counter,
+    );
+
+    assert!(report.contains("Categories Found: 3"));
+    assert!(report.contains("Technology"));
+    assert!(report.contains("News"));
+    assert!(report.contains("Subcategory"));
+    assert!(report.contains("tech.com"));
+    assert!(report.contains("subtech.com"));
+}
