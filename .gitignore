@@ -1,3 +1,5 @@
 /target
 output.txt
 *.opml
+.aider*
+.env
