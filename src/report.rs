@@ -79,7 +79,7 @@ pub fn format_markdown_report(
         sorted_categories.sort_by(|a, b| b.1.cmp(a.1));
 
         for (category, count) in sorted_categories {
-            report.push_str(&format!("| {} | {} |\n", category, count));
+            report.push_str(&format!("| {} | {} |\n", escape_special_chars(category), count));
         }
         report.push_str("\n");
     }
