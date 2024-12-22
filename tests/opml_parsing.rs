@@ -99,7 +99,7 @@ fn test_large_opml() {
     content.push_str("</body></opml>");
 
     let feeds = parse_opml(&content).unwrap();
-    assert_eq!(feeds.len(), 10_000);
+    assert_eq!(feeds.len(), 10,000);
 }
 
 #[test]
@@ -109,4 +109,21 @@ fn test_invalid_utf8_sequences() {
 
     let result = parse_opml(content);
     assert!(result.is_err());
+}
+
+#[test]
+fn test_url_normalization() {
+    let content = r#"<?xml version="1.0" encoding="UTF-8"?>
+    <opml version="2.0">
+        <head><title>Normalization Test</title></head>
+        <body>
+            <outline type="rss" text="Feed 1" xmlUrl="http://example.com/feed"/>
+            <outline type="rss" text="Feed 2" xmlUrl="http://example.com/feed/"/>
+            <outline type="rss" text="Feed 3" xmlUrl="https://example.com/feed"/>
+            <outline type="rss" text="Feed 4" xmlUrl="http://example.com/FEED"/>
+        </body>
+    </opml>"#;
+
+    let feeds = parse_opml(content).unwrap();
+    assert_eq!(feeds.len(), 1); // All URLs should be normalized to the same value
 }
