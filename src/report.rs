@@ -48,14 +48,16 @@ pub fn format_markdown_report(
 
     // Summary section
     report.push_str("## Summary\n\n");
-    report.push_str(&format!("- Total Feeds: {}\n", feeds.len()));
-    report.push_str(&format!("- Unique Feeds: {}\n", seen_urls.len()));
-    report.push_str(&format!("- Duplicate Feeds: {}\n", duplicates.len()));
-    report.push_str(&format!("- Total Categories: {}\n", categories.len()));
-    report.push_str(&format!("- Unique Domains: {}\n\n", domain_counter.len()));
+    report.push_str(&format!("Total Feeds: {}\n", feeds.len()));
+    report.push_str(&format!("Unique Feeds: {}\n", seen_urls.len()));
+    report.push_str(&format!("Categories Found: {}\n", categories.len()));
+    report.push_str(&format!("Unique Domains: {}\n\n", domain_counter.len()));
 
     // Category breakdown
-    report.push_str("## Categories\n\n");
+    if categories.is_empty() {
+        report.push_str("No categories found\n\n");
+    } else {
+        report.push_str("## Categories\n\n");
     let mut category_counter: HashMap<String, usize> = HashMap::new();
     for feed in feeds {
         for category in &feed.category {
@@ -88,8 +90,10 @@ pub fn format_markdown_report(
     report.push_str("\n");
 
     // Duplicate feeds
-    if !duplicates.is_empty() {
-        report.push_str("## Duplicate Feeds\n\n");
+    if duplicates.is_empty() {
+        report.push_str("No duplicate feeds found\n\n");
+    } else {
+        report.push_str("## Duplicate Feeds Found\n\n");
         for feed in duplicates {
             report.push_str(&format!("### {}\n\n", feed.title));
             report.push_str(&format!("- URL: {}\n", feed.xml_url));
