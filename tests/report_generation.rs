@@ -51,7 +51,7 @@ fn test_special_characters() {
         &domain_counter,
     );
 
-    assert!(report.contains("Test & Feed with < > Special \"Chars\""));
+    assert!(report.contains("Test &amp; Feed with &lt; &gt; Special &quot;Chars&quot;"));
 }
 
 #[test]
