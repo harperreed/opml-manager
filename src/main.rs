@@ -10,6 +10,10 @@ use opml_manager::cli::{Cli, Commands};
 use opml_manager::opml::{generate_opml, parse_opml};
 use opml_manager::report::{format_markdown_report, generate_summary};
 use opml_manager::validation::validate_feed;
+use opml_manager::tui::{TuiApp, handle_events, draw_ui};
+use crossterm::terminal::{enable_raw_mode, disable_raw_mode};
+use ratatui::backend::CrosstermBackend;
+use ratatui::Terminal;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
@@ -203,6 +207,30 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
             fs::write(&output_file, report)?;
             println!("✅ Report generated: {}", output_file);
+        }
+
+        Commands::Interactive => {
+            enable_raw_mode()?;
+            let stdout = std::io::stdout();
+            let backend = CrosstermBackend::new(stdout);
+            let mut terminal = Terminal::new(backend)?;
+
+            let mut app = TuiApp::new();
+            app.load_feeds(parse_opml(&fs::read_to_string("feeds.opml")?)?);
+
+            loop {
+                terminal.draw(|f| draw_ui(f, &app))?;
+
+                if let Event::Input(key) = events.next()? {
+                    handle_events(&mut app, Event::Input(key));
+                    if key == KeyCode::Char('q') {
+                        break;
+                    }
+                }
+            }
+
+            disable_raw_mode()?;
+            terminal.show_cursor()?;
         }
     }
 

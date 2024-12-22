@@ -51,6 +51,11 @@ You can run the OPML Manager using the following commands:
   cargo run --release -- report <input_file> <output_file> --validate-feeds --timeout <timeout_in_seconds>
   ```
 
+- **Launch the interactive TUI:**
+  ```bash
+  cargo run --release -- --interactive
+  ```
+
 For more options, use:
 ```bash
 cargo run --release -- --help
@@ -63,6 +68,8 @@ The OPML Manager is built using Rust and leverages several libraries:
 - **Reqwest**: For making HTTP requests to validate feeds.
 - **RoXMLTree**: For parsing and working with XML files.
 - **Serde**: For serializing and deserializing data structures.
+- **Ratatui**: For building terminal user interfaces.
+- **Crossterm**: For terminal manipulation.
 
 ### Project Structure
 The codebase is structured with distinct modules for organization:
@@ -73,6 +80,15 @@ The codebase is structured with distinct modules for organization:
 - `opml.rs`: Parsing and generating OPML files.
 - `report.rs`: Report generation functionality.
 - `validation.rs`: Validation logic for feeds.
+- `tui/`: Terminal user interface components.
+  - `mod.rs`: TUI module definition.
+  - `app.rs`: Application state management.
+  - `ui.rs`: UI components and layout.
+  - `events.rs`: Event handling.
+  - `widgets/`: Custom widgets for the TUI.
+    - `mod.rs`: Widgets module definition.
+    - `tree.rs`: Category tree widget.
+    - `feed.rs`: Feed list widget.
   
 ### Dependencies
 Check the `Cargo.toml` file for a complete list of dependencies.
@@ -85,6 +101,35 @@ cargo test
 
 ### Continuous Integration
 The project employs GitHub Actions for continuous integration, ensuring that tests pass on every push.
+
+## 🖥️ TUI Keyboard Shortcuts
+The interactive TUI supports the following keyboard shortcuts:
+
+- **Navigation:**
+  - `Up/Down`: Move selection up/down
+  - `Left/Right`: Expand/Collapse categories
+  - `Enter`: Select item
+
+- **File Management:**
+  - `Ctrl+O`: Open OPML file
+  - `Ctrl+S`: Save OPML file
+
+- **Category Management:**
+  - `A`: Add category
+  - `D`: Delete category
+  - `R`: Rename category
+  - `M`: Move feed to another category
+  - `G`: Merge categories
+
+- **Deduplication:**
+  - `Ctrl+D`: Start deduplication
+  - `Ctrl+K`: Keep selected duplicate
+  - `Ctrl+X`: Remove selected duplicate
+
+- **Miscellaneous:**
+  - `Ctrl+F`: Search/Filter
+  - `Ctrl+H`: Show help
+  - `Ctrl+Q`: Quit
 
 ---
 
