@@ -1,0 +1,22 @@
+[package]
+name = "opml-manager"
+version = "0.1.0"
+edition = "2021"
+authors = ["harper reed <harper@modest.com>"]
+description = "A tool for managing OPML feed lists"
+
+[dependencies]
+clap = { version = "4.4", features = ["derive"] }
+tokio = { version = "1.34", features = ["full"] }
+reqwest = { version = "0.11", features = ["json"] }
+roxmltree = "0.18"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+url = "2.5"
+chrono = "0.4"
+futures = "0.3"
+thiserror = "1.0"
+
+[[bin]]
+name = "opml-manager"
+path = "src/main.rs"
