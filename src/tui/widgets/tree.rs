@@ -47,10 +47,21 @@ impl CategoryTree {
     }
 
     pub fn draw(&self, frame: &mut Frame, area: Rect) {
+        if self.categories.is_empty() {
+            let empty_message = ListItem::new("No categories available")
+                .style(Style::default().fg(Color::Gray));
+            let list = List::new(vec![empty_message])
+                .block(Block::default().borders(Borders::ALL).title("Categories"));
+            frame.render_widget(list, area);
+            return;
+        }
         let items: Vec<ListItem> = self
             .categories
             .keys()
-            .map(|c| ListItem::new(c.clone()))
+            .map(|c| {
+                ListItem::new(c.as_str())
+                    .style(Style::default().fg(Color::White))
+            })
             .collect();
         let list = List::new(items)
             .block(Block::default().borders(Borders::ALL).title("Categories"))
@@ -60,7 +71,6 @@ impl CategoryTree {
                     .add_modifier(Modifier::BOLD),
             )
             .highlight_symbol("> ");
-
-        frame.render_stateful_widget(list, area, &mut self.state.clone());
+        frame.render_stateful_widget(list, area, &mut self.state);
     }
 }
