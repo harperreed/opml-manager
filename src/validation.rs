@@ -60,9 +60,7 @@ pub async fn validate_feed(feed: &Feed, client: &Client) -> Result<ValidationRes
                     match roxmltree::Document::parse(&text) {
                         Ok(doc) => {
                             let root = doc.root_element();
-                            let is_rss = root.children()
-                                .find(|n| n.has_tag_name("rss") || n.has_tag_name("channel"))
-                                .is_some();
+                            let is_rss = root.has_tag_name("rss") || root.has_tag_name("channel");
                             let is_atom = root.has_tag_name("feed");
                             
                             if is_rss || is_atom {

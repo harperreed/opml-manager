@@ -6,7 +6,7 @@ Welcome to the **OPML Manager** repository! This project provides a tool for man
 The **OPML Manager** is a Rust-based command-line application designed to handle OPML (Outline Processor Markup Language) files effectively. It offers functionality to:
 - Analyze OPML files for duplicates and potential issues.
 - Remove duplicate feeds while preserving categories.
-- Validate feeds by checking if URLs are reachable and respond with proper XML format.
+- Validate feeds by checking if URLs are reachable and respond with proper RSS/Atom format.
 - Generate detailed reports about the OPML file's feeds.
 
 This project aims to equip users with a comprehensive set of tools for OPML file management, ensuring high-quality feed lists.

@@ -166,3 +166,48 @@ fn test_compressed_response() {
     assert_eq!(result.status, "invalid");
     mock.assert();
 }
+
+#[test]
+fn test_validate_atom_feed() {
+    let rt = common::get_test_runtime();
+    let mut server = mockito::Server::new();
+    let mock = server
+        .mock("GET", "/feed.atom")
+        .with_status(200)
+        .with_header("content-type", "application/atom+xml")
+        .with_body(r#"<?xml version="1.0"?><feed xmlns="http://www.w3.org/2005/Atom"><title>Test</title></feed>"#)
+        .create();
+
+    let feed = common::create_test_feed("Test Atom Feed", &format!("{}/feed.atom", server.url()));
+    let client = reqwest::Client::new();
+
+    let result = rt
+        .block_on(async { validate_feed(&feed, &client).await })
+        .unwrap();
+
+    assert_eq!(result.status, "valid");
+    assert!(result.error.is_empty());
+    mock.assert();
+}
+
+#[test]
+fn test_invalid_feed_format() {
+    let rt = common::get_test_runtime();
+    let mut server = mockito::Server::new();
+    let mock = server
+        .mock("GET", "/feed.xml")
+        .with_status(200)
+        .with_body(r#"<?xml version="1.0"?><html><body>Not a feed</body></html>"#)
+        .create();
+
+    let feed = common::create_test_feed("Invalid Feed Format", &format!("{}/feed.xml", server.url()));
+    let client = reqwest::Client::new();
+
+    let result = rt
+        .block_on(async { validate_feed(&feed, &client).await })
+        .unwrap();
+
+    assert_eq!(result.status, "invalid");
+    assert_eq!(result.error, "Document is not a valid RSS or Atom feed");
+    mock.assert();
+}
