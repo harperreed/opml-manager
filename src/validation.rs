@@ -27,7 +27,7 @@ pub async fn validate_feed(feed: &Feed, client: &Client) -> Result<ValidationRes
             Err(e) => {
                 if e.is_timeout() {
                     return Ok(ValidationResult {
-                        feed: feed.title.clone(),
+                        feed: feed.title.replace("|", "&#124;"),
                         url: feed.xml_url.clone(),
                         status: "error".to_string(),
                         error: "Network timeout".to_string(),
@@ -45,7 +45,7 @@ pub async fn validate_feed(feed: &Feed, client: &Client) -> Result<ValidationRes
                 }
 
                 return Ok(ValidationResult {
-                    feed: feed.title.clone(),
+                    feed: feed.title.replace("|", "&#124;"),
                     url: feed.xml_url.clone(),
                     status: "error".to_string(),
                     error: e.to_string(),
@@ -65,7 +65,7 @@ pub async fn validate_feed(feed: &Feed, client: &Client) -> Result<ValidationRes
                             
                             if is_rss || is_atom {
                                 return Ok(ValidationResult {
-                                    feed: feed.title.clone(),
+                                    feed: feed.title.replace("|", "&#124;"),
                                     url: feed.xml_url.clone(),
                                     status: "valid".to_string(),
                                     error: String::new(),
@@ -74,7 +74,7 @@ pub async fn validate_feed(feed: &Feed, client: &Client) -> Result<ValidationRes
                             }
                             
                             return Ok(ValidationResult {
-                                feed: feed.title.clone(),
+                                feed: feed.title.replace("|", "&#124;"),
                                 url: feed.xml_url.clone(),
                                 status: "invalid".to_string(),
                                 error: "Document is not a valid RSS or Atom feed".to_string(),
@@ -83,7 +83,7 @@ pub async fn validate_feed(feed: &Feed, client: &Client) -> Result<ValidationRes
                         },
                         Err(e) => {
                             return Ok(ValidationResult {
-                                feed: feed.title.clone(),
+                                feed: feed.title.replace("|", "&#124;"),
                                 url: feed.xml_url.clone(),
                                 status: "invalid".to_string(),
                                 error: e.to_string(),
@@ -95,7 +95,7 @@ pub async fn validate_feed(feed: &Feed, client: &Client) -> Result<ValidationRes
                 Err(_) => {
                     if attempts >= max_attempts {
                         return Ok(ValidationResult {
-                            feed: feed.title.clone(),
+                            feed: feed.title.replace("|", "&#124;"),
                             url: feed.xml_url.clone(),
                             status: "error".to_string(),
                             error: "Failed to read response text".to_string(),
@@ -113,7 +113,7 @@ pub async fn validate_feed(feed: &Feed, client: &Client) -> Result<ValidationRes
             continue;
         } else {
             return Ok(ValidationResult {
-                feed: feed.title.clone(),
+                feed: feed.title.replace("|", "&#124;"),
                 url: feed.xml_url.clone(),
                 status: "error".to_string(),
                 error: format!("HTTP {}", response.status()),
@@ -123,7 +123,7 @@ pub async fn validate_feed(feed: &Feed, client: &Client) -> Result<ValidationRes
 
         if attempts >= max_attempts {
             return Ok(ValidationResult {
-                feed: feed.title.clone(),
+                feed: feed.title.replace("|", "&#124;"),
                 url: feed.xml_url.clone(),
                 status: "error".to_string(),
                 error: "Max retry attempts reached".to_string(),

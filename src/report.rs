@@ -8,6 +8,7 @@ fn escape_special_chars(text: &str) -> String {
         .replace("<", "&lt;")
         .replace(">", "&gt;")
         .replace("\"", "&quot;")
+        .replace("|", "&#124;")
 }
 
 pub fn generate_summary(
