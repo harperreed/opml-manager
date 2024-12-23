@@ -161,9 +161,10 @@ async fn main() -> Result<(), Box<dyn Error>> {
                     for result in status_results {
                         let categories = result.categories.join(" > ");
                         let error = result.error.replace("|", "\\|");
+                        let feed = result.feed.replace("|", "&#124;");
                         report.push_str(&format!(
                             "| {} | {} | {} | {} |\n",
-                            result.feed, result.url, error, categories
+                            feed, result.url, error, categories
                         ));
                     }
                     report.push_str("\n");
@@ -226,9 +227,10 @@ async fn main() -> Result<(), Box<dyn Error>> {
                 for result in results {
                     if let Ok(Ok(validation)) = result {
                         let error = validation.error.replace("|", "\\|");
+                        let feed = validation.feed.replace("|", "&#124;");
                         report.push_str(&format!(
                             "| {} | {} | {} |\n",
-                            validation.feed, validation.status, error
+                            feed, validation.status, error
                         ));
                     }
                 }
